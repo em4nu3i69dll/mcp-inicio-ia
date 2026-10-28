@@ -1,0 +1,44 @@
+name: mcp-inicio
+
+services:
+  mcp:
+    build: .
+    init: true
+    stdin_open: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 1
+    pids_limit: 64
+    tmpfs:
+      - /tmp:rw,nosuid,noexec,size=16m
+    volumes:
+      - ${MCP_DATOS:-./datos}:/espacio/datos
+      - ${MCP_CONTENIDO:-./contenido}:/espacio/contenido:ro
+    networks: [privada]
+
+  ollama:
+    profiles: [ia]
+    image: ollama/ollama@sha256:4c5b27871a3239a717048f9b93057680a51b60c8119a7016aebb57f938e25e35
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 3g
+    cpus: 2
+    pids_limit: 128
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_NUM_PARALLEL: '1'
+      OLLAMA_MAX_LOADED_MODELS: '1'
+      OLLAMA_CONTEXT_LENGTH: '8192'
+    volumes:
+      - modelos:/root/.ollama
+    networks: [privada, descarga]
+
+networks:
+  privada:
+    internal: true
+  descarga:
+
+volumes:
+  modelos:
