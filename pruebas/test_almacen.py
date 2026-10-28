@@ -39,6 +39,27 @@ class Documentos(unittest.TestCase):
         r = self.almacen.indexar(self.contenido)
         self.assertEqual(r['indexados'], 1)
 
+    def test_no_indexa_carpetas_privadas_con_mayusculas(self):
+        for nombre in ['SECRETOS', 'Datos', 'NODE_MODULES']:
+            carpeta = self.contenido / nombre
+            carpeta.mkdir()
+            (carpeta / 'privado.md').write_text('contenido reservado', encoding='utf-8')
+        self.assertEqual(self.almacen.indexar(self.contenido)['indexados'], 1)
+
+    def test_limita_lectura_aunque_el_tamano_del_archivo_cambie(self):
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        archivo = self.contenido / 'crece.md'
+        archivo.write_text('x' * 200001, encoding='utf-8')
+        original = Path.stat
+        def medida(ruta, *args, **kwargs):
+            valor = original(ruta, *args, **kwargs)
+            return SimpleNamespace(st_size=1, st_mode=valor.st_mode) if ruta == archivo else valor
+        with patch.object(Path, 'stat', medida):
+            resultado = self.almacen.indexar(self.contenido)
+        self.assertEqual(resultado['indexados'], 1)
+        self.assertGreaterEqual(resultado['omitidos'], 1)
+
     def test_clave_privada_aborta_sin_borrar_indice(self):
         (self.contenido / 'clave.md').write_text('-----BEGIN PRIVATE KEY-----\nno es una clave real\n')
         with self.assertRaises(ValueError):

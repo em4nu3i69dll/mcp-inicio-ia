@@ -66,7 +66,7 @@ class Almacen:
         documentos = []
         omitidos = 0
         for directorio, carpetas, archivos in os.walk(origen, followlinks=False):
-            carpetas[:] = [n for n in carpetas if not n.startswith('.') and n not in ['node_modules', 'secretos', 'datos'] and not (Path(directorio) / n).is_symlink() and not (Path(directorio) / n).is_junction()]
+            carpetas[:] = [n for n in carpetas if not n.startswith('.') and n.casefold() not in ['node_modules', 'secretos', 'datos'] and not (Path(directorio) / n).is_symlink() and not (Path(directorio) / n).is_junction()]
             for nombre in sorted(archivos):
                 p = Path(directorio) / nombre
                 if not p.is_file() or p.is_symlink() or p.suffix.lower() not in ['.md', '.txt'] or nombre.startswith('.'):
@@ -76,7 +76,12 @@ class Almacen:
                     omitidos += 1
                     continue
                 try:
-                    contenido = p.read_text(encoding='utf-8-sig')
+                    with p.open('rb') as archivo:
+                        crudo = archivo.read(200001)
+                    if len(crudo) > 200000:
+                        omitidos += 1
+                        continue
+                    contenido = crudo.decode('utf-8-sig')
                 except UnicodeError:
                     omitidos += 1
                     continue
